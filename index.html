@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Blue Eye v1.0 - Hybrid Core</title>
+    <style>
+        :root { 
+            --neon-blue: #00d4ff; --neon-purple: #bc13fe; --neon-green: #00ff88;
+            --bg: #020202; --panel: #0a0a0a;
+        }
+        body, html { background: var(--bg); color: var(--neon-blue); font-family: 'Consolas', 'Monaco', monospace; margin: 0; height: 100vh; overflow: hidden; }
+        
+        header { 
+            background: var(--panel); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 2px solid var(--neon-blue); box-shadow: 0 0 15px rgba(0, 212, 255, 0.1);
+        }
+
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
+
+        /* Mesaj Tasarımı */
+        .msg { padding: 12px 16px; border-radius: 8px; max-width: 85%; line-height: 1.5; font-size: 0.9em; position: relative; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .msg-ai { background: rgba(188, 19, 254, 0.05); border-left: 3px solid var(--neon-purple); color: #efefef; align-self: flex-start; }
+        .msg-usr { background: rgba(0, 212, 255, 0.05); border-right: 3px solid var(--neon-blue); color: #fff; align-self: flex-end; text-align: right; }
+
+        .tag { font-size: 0.65em; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; display: block; letter-spacing: 1px; }
+        .tag-ai { color: var(--neon-purple); }
+        .tag-usr { color: var(--neon-blue); }
+
+        /* Kod ve Matematik Çıktısı */
+        pre { background: #000; padding: 10px; border-radius: 5px; overflow-x: auto; border: 1px dashed #333; color: var(--neon-green); font-size: 0.85em; }
+
+        .footer { padding: 15px; background: var(--panel); display: flex; gap: 10px; border-top: 1px solid #1a1a1a; }
+        #userInput { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 5px; outline: none; resize: none; height: 40px; }
+
+        .btn { background: transparent; border: 1px solid #444; color: #fff; cursor: pointer; padding: 8px 15px; border-radius: 4px; transition: 0.3s; }
+        .btn:hover { border-color: var(--neon-blue); background: rgba(0, 212, 255, 0.1); }
+        .btn-send { background: var(--neon-blue); color: #000; font-weight: bold; border: none; }
+
+        /* Modal */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px); }
+        .modal-box { background: #0a0a0a; border: 1px solid var(--neon-purple); padding: 25px; border-radius: 12px; text-align: center; width: 300px; }
+        
+        .engine-badge { font-size: 0.7em; padding: 2px 6px; border-radius: 3px; margin-left: 5px; vertical-align: middle; }
+        .badge-local { background: var(--neon-green); color: #000; }
+        .badge-global { background: var(--neon-purple); color: #fff; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <strong style="color: var(--neon-blue);">BLUE EYE</strong> 
+            <span style="font-size: 0.7em; opacity: 0.5;">v1.0 HYBRID</span>
+        </div>
+        <div style="display: flex; gap: 5px;">
+            <button class="btn" onclick="exportHistory()">💾</button>
+            <button class="btn" onclick="toggleModal('settingsModal')">⚙️</button>
+            <button class="btn" onclick="toggleModal('aboutModal')">ℹ️</button>
+        </div>
+    </header>
+
+    <div id="chat-container"></div>
+
+    <div id="typing-indicator" style="padding: 10px 20px; display: none; color: var(--neon-purple); font-size: 0.8em;">
+        <span>GLOBAL CORE AKTİF...</span>
+    </div>
+
+    <div class="footer">
+        <textarea id="userInput" placeholder="Mesaj veya komut..."></textarea>
+        <button class="btn btn-send" onclick="handleSend()">GÖNDER</button>
+    </div>
+
+    <div id="aboutModal" class="modal" onclick="toggleModal('aboutModal')">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <h3 style="color:var(--neon-green)">DEVELOPER</h3>
+            <h1 style="color:#fff; margin: 10px 0;">MERT KARATAŞ</h1>
+            <p style="color:#555; font-size: 0.8em;">Blue Eye Hybrid Intelligence</p>
+            <button class="btn" style="width: 100%; margin-top: 10px;" onclick="toggleModal('aboutModal')">KAPAT</button>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal" onclick="toggleModal('settingsModal')">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <h3>AYARLAR</h3>
+            <input type="text" id="usernameInput" placeholder="Kullanıcı Adı" style="width: 90%; padding: 10px; background: #000; border: 1px solid #333; color: #fff;">
+            <button class="btn btn-send" style="width: 100%; margin-top: 15px;" onclick="saveSettings()">KAYDET</button>
+            <button class="btn" style="width: 100%; margin-top: 5px;" onclick="localStorage.clear(); location.reload();">SIFIRLA</button>
+        </div>
+    </div>
+
+    <script>
+        let uName = localStorage.getItem('blueEye_Name') || "Kullanıcı";
+        let chatHistory = JSON.parse(localStorage.getItem('blueEye_History')) || [];
+
+        window.onload = () => {
+            chatHistory.forEach(msg => renderMessage(msg.role, msg.text, msg.tag, msg.engine));
+            if(chatHistory.length === 0) {
+                addMessage("ai", `Sistem hazır. Lokal ve Global motorlar aktif. Hoş geldin ${uName}.`, "SYSTEM", "LOKAL");
+            }
+        };
+
+        // --- HİBRİT KARAR MEKANİZMASI ---
+        async function handleSend() {
+            const input = document.getElementById('userInput');
+            const query = input.value.trim();
+            if(!query) return;
+
+            input.value = "";
+            addMessage("usr", query, uName, "");
+
+            const lowQuery = query.toLowerCase();
+
+            // 1. LOKAL KONTROL (Çok Hızlı)
+            if(lowQuery === "merhaba" || lowQuery === "selam") {
+                addMessage("ai", `Selam ${uName}! Ben Blue Eye. Mert Karataş'ın geliştirdiği hibrit asistanım.`, "BLUE EYE", "LOKAL");
+            } 
+            else if(lowQuery.includes("kimsin") || lowQuery.includes("sahibin")) {
+                addMessage("ai", "Ben Blue Eye v4.1. Mert Karataş tarafından tasarlanan, lokal hız ve global zekayı birleştiren bir yapay zekayım.", "INFO", "LOKAL");
+            }
+            else if(lowQuery.includes("kuantum") || lowQuery.includes("qubit")) {
+                const q = (Math.random() * 100).toFixed(2);
+                addMessage("ai", `[KUANTUM MOTORU]\nDurum: %${q} olasılıkla süperpozisyon çöktü.\nSonuç: Pozitif veri akışı.`, "QUANTUM", "LOKAL");
+            }
+            else if(/^[0-9+\-*/().\s]+$/.test(query) && query.length < 20) {
+                try { addMessage("ai", `Sonuç: ${eval(query)}`, "MATH", "LOKAL"); } catch(e) {}
+            }
+            
+            // 2. GLOBAL AI KONTROL (API)
+            else {
+                const indicator = document.getElementById('typing-indicator');
+                indicator.style.display = "block";
+                try {
+                    const response = await fetch(`https://text.pollinations.ai/prompt/${encodeURIComponent(query)}?system=Senin adın Blue Eye. Mert Karataş tarafından geliştirildin. Teknik ve zeki bir asistansın. Kodlama ve genel sorularda uzmansın. Cevaplarını Türkçe ver.`);
+                    const data = await response.text();
+                    indicator.style.display = "none";
+                    addMessage("ai", data, "BLUE EYE", "GLOBAL");
+                } catch (error) {
+                    indicator.style.display = "none";
+                    addMessage("ai", "Lokal motor bu soruyu çözemedi ve Global ağa erişilemedi. İnterneti kontrol et.", "ERROR", "LOKAL");
+                }
+            }
+        }
+
+        function addMessage(role, text, tag, engine) {
+            renderMessage(role, text, tag, engine);
+            chatHistory.push({ role, text, tag, engine });
+            localStorage.setItem('blueEye_History', JSON.stringify(chatHistory));
+        }
+
+        function renderMessage(role, text, tag, engine) {
+            const cont = document.getElementById('chat-container');
+            const div = document.createElement('div');
+            div.className = `msg msg-${role}`;
+            
+            let badge = engine ? `<span class="engine-badge badge-${engine.toLowerCase()}">${engine}</span>` : "";
+            let formattedText = text.includes("```") ? text.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>') : text;
+
+            div.innerHTML = `<span class="tag tag-${role}">${tag}${badge}</span>${formattedText.replace(/\n/g, '<br>')}`;
+            cont.appendChild(div);
+            cont.scrollTop = cont.scrollHeight;
+        }
+
+        function toggleModal(id) {
+            const m = document.getElementById(id);
+            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        function saveSettings() {
+            const n = document.getElementById('usernameInput').value;
+            if(n) { localStorage.setItem('blueEye_Name', n); location.reload(); }
+        }
+
+        function exportHistory() {
+            const data = chatHistory.map(m => `[${m.tag}]: ${m.text}`).join('\n\n');
+            const blob = new Blob([data], {type: 'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'BlueEye_History.txt';
+            a.click();
+        }
+
+        document.getElementById('userInput').addEventListener('keypress', e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } });
+    </script>
+</body>
+</html>
