@@ -3,88 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blue Eye v1.1</title>
+    <title>Blue Eye v1.2 - Hafızalı</title>
     <style>
-        body {
-            background-color: #000;
-            color: #fff;
-            font-family: 'Segoe UI', sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100-vh;
-            overflow: hidden;
-        }
-
-        /* Mesajların toplandığı alan */
-        #chat-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            scroll-behavior: smooth;
-        }
-
-        /* Mesaj baloncukları */
-        .message {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 15px;
-            line-height: 1.4;
-            word-wrap: break-word;
-        }
-
-        .user-message {
-            align-self: flex-end;
-            background-color: #222;
-            border: 1px solid #444;
-        }
-
-        .ai-message {
-            align-self: flex-start;
-            background-color: #001a33; /* Hafif mavi tonlu siyah */
-            border: 1px solid #0055ff;
-        }
-
-        /* Giriş alanı sabit */
-        .input-area {
-            background: #111;
-            padding: 15px;
-            display: flex;
-            gap: 10px;
-            border-top: 1px solid #333;
-        }
-
-        input {
-            flex: 1;
-            background: #222;
-            border: 1px solid #444;
-            color: #fff;
-            padding: 12px;
-            border-radius: 8px;
-            outline: none;
-        }
-
-        button {
-            background: #0055ff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
+        /* Tasarım aynı kalıyor, sadece fonksiyonu güçlendiriyoruz */
+        body { background-color: #000; color: #fff; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 80%; padding: 10px; border-radius: 10px; word-wrap: break-word; }
+        .user { align-self: flex-end; background: #222; border: 1px solid #444; }
+        .ai { align-self: flex-start; background: #001a33; border: 1px solid #0055ff; }
+        .input-area { background: #111; padding: 15px; display: flex; gap: 10px; }
+        input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 5px; }
+        button { background: #0055ff; color: #fff; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="chat-container">
-        <div class="message ai-message">Blue Eye v1.1 Aktif. Size nasıl yardımcı olabilirim?</div>
-    </div>
+    <div id="chat-container"></div>
 
     <div class="input-area">
-        <input type="text" id="userInput" placeholder="Bir şeyler yazın...">
+        <input type="text" id="userInput" placeholder="Mesajınızı yazın...">
         <button onclick="sendMessage()">Gönder</button>
     </div>
 
@@ -92,165 +29,49 @@
         const chatContainer = document.getElementById('chat-container');
         const userInput = document.getElementById('userInput');
 
-        function sendMessage() {
-            const text = userInput.value.trim();
-            if (text === "") return;
+        // --- HAFIZA BURADA BAŞLIYOR ---
+        let chatContext = [
+            {"role": "system", "content": "Senin adın Blue Eye AI. Mert'in geliştirdiği bir yapay zekasın. Her şeyi hatırlamalısın."}
+        ];
 
-            // Kullanıcı mesajını ekle
-            addMessage(text, 'user-message');
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // 1. Kullanıcı mesajını ekrana ve HAFIZAYA ekle
+            addMessage(text, 'user');
+            chatContext.push({"role": "user", "content": text});
             userInput.value = "";
 
-            // Yapay zeka simülasyonu (Buraya kendi API'ni veya zekanı bağlayabilirsin)
-            setTimeout(() => {
-                const response = "Anlaşıldı. Bu konuda Blue Eye protokolü devreye giriyor...";
-                addMessage(response, 'ai-message');
-            }, 600);
+            // 2. API'ye TÜM GEÇMİŞİ (chatContext) gönderiyoruz
+            // Not: Buradaki fetch kısmına kendi API URL'ni ve Key'ini eklemelisin
+            try {
+                // ŞİMDİLİK SİMÜLASYON (Sen kendi API'ni buraya bağlayınca hafıza çalışacak)
+                const aiResponse = "Az önce söylediğin '" + chatContext[chatContext.length - 1].content + "' konusunu not aldım, unutmuyorum usta!";
+                
+                setTimeout(() => {
+                    addMessage(aiResponse, 'ai');
+                    // 3. AI cevabını da HAFIZAYA ekle
+                    chatContext.push({"role": "assistant", "content": aiResponse});
+                    
+                    // Hafıza çok şişmesin diye son 20 mesajı tut (Opsiyonel)
+                    if(chatContext.length > 20) chatContext.shift(); 
+                }, 500);
+
+            } catch (error) {
+                addMessage("Bağlantı hatası usta!", 'ai');
+            }
         }
 
-        function addMessage(text, className) {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${className}`;
-            msgDiv.innerText = text;
-            chatContainer.appendChild(msgDiv);
-
-            // OTOMATİK AŞAĞI KAYDIRMA (Sihirli satır)
+        function addMessage(text, type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerText = text;
+            chatContainer.appendChild(div);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        // Enter tuşu ile gönderme
-        userInput.addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
-                sendMessage();
-            }
-        });
-    </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blue Eye v1.1</title>
-    <style>
-        body {
-            background-color: #000;
-            color: #fff;
-            font-family: 'Segoe UI', sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100-vh;
-            overflow: hidden;
-        }
-
-        /* Mesajların toplandığı alan */
-        #chat-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            scroll-behavior: smooth;
-        }
-
-        /* Mesaj baloncukları */
-        .message {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 15px;
-            line-height: 1.4;
-            word-wrap: break-word;
-        }
-
-        .user-message {
-            align-self: flex-end;
-            background-color: #222;
-            border: 1px solid #444;
-        }
-
-        .ai-message {
-            align-self: flex-start;
-            background-color: #001a33; /* Hafif mavi tonlu siyah */
-            border: 1px solid #0055ff;
-        }
-
-        /* Giriş alanı sabit */
-        .input-area {
-            background: #111;
-            padding: 15px;
-            display: flex;
-            gap: 10px;
-            border-top: 1px solid #333;
-        }
-
-        input {
-            flex: 1;
-            background: #222;
-            border: 1px solid #444;
-            color: #fff;
-            padding: 12px;
-            border-radius: 8px;
-            outline: none;
-        }
-
-        button {
-            background: #0055ff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
-
-    <div id="chat-container">
-        <div class="message ai-message">Blue Eye v1.1 Aktif. Size nasıl yardımcı olabilirim?</div>
-    </div>
-
-    <div class="input-area">
-        <input type="text" id="userInput" placeholder="Bir şeyler yazın...">
-        <button onclick="sendMessage()">Gönder</button>
-    </div>
-
-    <script>
-        const chatContainer = document.getElementById('chat-container');
-        const userInput = document.getElementById('userInput');
-
-        function sendMessage() {
-            const text = userInput.value.trim();
-            if (text === "") return;
-
-            // Kullanıcı mesajını ekle
-            addMessage(text, 'user-message');
-            userInput.value = "";
-
-            // Yapay zeka simülasyonu (Buraya kendi API'ni veya zekanı bağlayabilirsin)
-            setTimeout(() => {
-                const response = "Anlaşıldı. Bu konuda Blue Eye protokolü devreye giriyor...";
-                addMessage(response, 'ai-message');
-            }, 600);
-        }
-
-        function addMessage(text, className) {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${className}`;
-            msgDiv.innerText = text;
-            chatContainer.appendChild(msgDiv);
-
-            // OTOMATİK AŞAĞI KAYDIRMA (Sihirli satır)
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        // Enter tuşu ile gönderme
-        userInput.addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
-                sendMessage();
-            }
-        });
+        userInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
     </script>
 </body>
 </html>
